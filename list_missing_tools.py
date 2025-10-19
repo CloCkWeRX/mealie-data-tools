@@ -35,7 +35,7 @@ async def find_tool_mentions(recipe) -> list[str]:
             continue
 
 
-        found = re.findall(r"(oven|grill|fry(?:ing)?)", text, re.IGNORECASE)
+        found = re.findall(r"(blend|food processor|oven|grill|broil|fry(?:ing)?)", text, re.IGNORECASE)
 
         if found:
             # Keep a record of which word matched and where
