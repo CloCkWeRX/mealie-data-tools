@@ -15,9 +15,12 @@ if not BASE_URL or not API_TOKEN:
     exit(1)
 # ======================================
 
+
 async def main(main_food_name: str, alias_food_name: str):
     async with MealieClient(base_url=BASE_URL, api_token=API_TOKEN) as client:
-        print(f"Fetching foods from Mealie to merge '{alias_food_name}' into '{main_food_name}'…")
+        print(
+            f"Fetching foods from Mealie to merge '{alias_food_name}' into '{main_food_name}'…"
+        )
 
         all_foods = {food.name: food for food in await client.foods.get_all()}
 
@@ -43,9 +46,13 @@ async def main(main_food_name: str, alias_food_name: str):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Merge one ingredient into another in Mealie.")
+    parser = argparse.ArgumentParser(
+        description="Merge one ingredient into another in Mealie."
+    )
     parser.add_argument("main_food", help="The name of the ingredient to keep.")
-    parser.add_argument("alias_food", help="The name of the ingredient to merge and make an alias.")
+    parser.add_argument(
+        "alias_food", help="The name of the ingredient to merge and make an alias."
+    )
 
     args = parser.parse_args()
 

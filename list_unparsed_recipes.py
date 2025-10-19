@@ -15,15 +15,17 @@ if not BASE_URL or not API_TOKEN:
     exit(1)
 # =========================================
 
+
 async def has_unparsed_ingredients(recipe: dict) -> bool:
     """
     Check if the given recipe dict contains any ingredients
     whose parsed fields are missing or incomplete.
     """
     for ingredient in recipe.recipeIngredient:
-        if ingredient.get('food') is not None:
+        if ingredient.get("food") is not None:
             return False
     return True
+
 
 async def main():
     async with MealieClient(base_url=BASE_URL, api_token=API_TOKEN) as client:
@@ -40,8 +42,10 @@ async def main():
             recipe = await client.recipes.get(recipe_id)
 
             if await has_unparsed_ingredients(recipe):
-                print(f"❗ {recipe_name} (ID: {BASE_URL}/g/home/r/{recipe_summary.slug}) has unparsed ingredients")
+                print(
+                    f"❗ {recipe_name} (ID: {BASE_URL}/g/home/r/{recipe_summary.slug}) has unparsed ingredients"
+                )
+
 
 if __name__ == "__main__":
     asyncio.run(main())
-

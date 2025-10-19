@@ -15,6 +15,7 @@ if not BASE_URL or not API_TOKEN:
     exit(1)
 # ======================================
 
+
 async def main():
     async with MealieClient(base_url=BASE_URL, api_token=API_TOKEN) as client:
         print("Fetching all foods from Mealie…")
@@ -40,19 +41,25 @@ async def main():
 
                 try:
                     # Search for the food item on Wikidata
-                    entity = wikidata_client.get(food.name, load=True, type='item', language='en')
-                    aliases = entity.data.get('aliases', {}).get('en', [])
+                    entity = wikidata_client.get(
+                        food.name, load=True, type="item", language="en"
+                    )
+                    aliases = entity.data.get("aliases", {}).get("en", [])
 
                     if aliases:
-                        print(f"  Found aliases on Wikidata: {', '.join(a['value'] for a in aliases)}")
+                        print(
+                            f"  Found aliases on Wikidata: {', '.join(a['value'] for a in aliases)}"
+                        )
                         for alias_data in aliases:
-                            alias_name = alias_data['value']
+                            alias_name = alias_data["value"]
 
                             # Check if the alias food already exists in our current state
                             alias_food = all_foods_dict.get(alias_name)
 
                             if not alias_food:
-                                print(f"    Creating new food for alias '{alias_name}'...")
+                                print(
+                                    f"    Creating new food for alias '{alias_name}'..."
+                                )
                                 alias_food = await client.foods.create(name=alias_name)
                                 # Add the new food to our dictionary for future lookups
                                 all_foods_dict[alias_name] = alias_food
@@ -66,7 +73,10 @@ async def main():
                     else:
                         print("  No aliases found on Wikidata.")
                 except Exception as e:
-                    print(f"  Could not find '{food.name}' on Wikidata or an error occurred: {e}")
+                    print(
+                        f"  Could not find '{food.name}' on Wikidata or an error occurred: {e}"
+                    )
+
 
 if __name__ == "__main__":
     asyncio.run(main())

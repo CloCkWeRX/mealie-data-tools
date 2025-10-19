@@ -15,6 +15,7 @@ if not BASE_URL or not API_TOKEN:
     exit(1)
 # ======================================
 
+
 async def has_missing_tools(recipe) -> bool:
     """
     Check if the given recipe object has no tools listed.
@@ -29,13 +30,16 @@ async def find_tool_mentions(recipe) -> list[str]:
     """
     matches = []
     for step in recipe.recipeInstructions:
-        text = step['text']
+        text = step["text"]
 
         if not text:
             continue
 
-
-        found = re.findall(r"(skillet|wok|blend|food processor|bake|oven|grill|broil|fry(?:ing)?)", text, re.IGNORECASE)
+        found = re.findall(
+            r"(skillet|wok|blend|food processor|bake|oven|grill|broil|fry(?:ing)?)",
+            text,
+            re.IGNORECASE,
+        )
 
         if found:
             # Keep a record of which word matched and where
@@ -56,7 +60,9 @@ async def main():
             tool_mentions = await find_tool_mentions(recipe)
 
             if missing_tools and tool_mentions:
-                print(f"{recipe_summary.name} ({BASE_URL}/g/home/r/{recipe_summary.slug}) missing tools")
+                print(
+                    f"{recipe_summary.name} ({BASE_URL}/g/home/r/{recipe_summary.slug}) missing tools"
+                )
                 for match in tool_mentions:
                     print(f"   ↳ {match}")
                 print()  # blank line for readability
@@ -64,4 +70,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-

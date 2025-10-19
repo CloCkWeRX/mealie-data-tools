@@ -14,6 +14,7 @@ if not BASE_URL or not API_TOKEN:
     exit(1)
 # ======================================
 
+
 async def main():
     async with MealieClient(base_url=BASE_URL, api_token=API_TOKEN) as client:
         print("Fetching recipes from Mealie…")
@@ -24,8 +25,11 @@ async def main():
         for recipe_summary in all_recipes:
             recipe = await client.recipes.get(recipe_summary.id)
 
-            if not recipe.recipeCategory:
-                print(f"{recipe.name} ({BASE_URL}/g/home/r/{recipe.slug}) has no categories")
+            if len(recipe.recipe_category) == 0:
+                print(
+                    f"{recipe.name} ({BASE_URL}/g/home/r/{recipe.slug}) has no categories"
+                )
+
 
 if __name__ == "__main__":
     asyncio.run(main())
