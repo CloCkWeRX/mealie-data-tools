@@ -64,18 +64,11 @@ async def main():
                     print(f"  Found aliases on Wikidata: {', '.join(aliases)}")
                     for alias_name in aliases:
                         if alias_name != food.name:
-                            food.aliases.append(alias_name)
-                            print(f"    Creating new food for alias '{alias_name}'...")
-                            updated_food = FoodUpdateRequest(
-                                name=food.name,
-                                pluralName=food.pluralName,
-                                description=food.description,
-                                extra=food.extras,
-                                labelId=food.labelId,
-                                aliases=food.aliases,
-                                householdsWithIngredientFood=food.householdsWithIngredientFood,
-                                label=food.label
-                            )
+                            food.aliases.append({ "name": alias_name })
+                            print(f"    Creating new alias {food.name} '{alias_name}'...")
+                            updated_food = {
+                                "aliases": food.aliases
+                            }
                             await client.foods.update(food_id=food.id, food=updated_food)
                 else:
                     print("  No aliases found on Wikidata.")
