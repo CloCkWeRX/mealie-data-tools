@@ -1,0 +1,2 @@
+mealie-client
+python-dotenv
