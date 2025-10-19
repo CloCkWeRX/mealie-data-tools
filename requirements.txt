@@ -1,2 +1,3 @@
 mealie-client
 python-dotenv
+Wikidata
