@@ -49,12 +49,12 @@ async def main():
                 if re.search(rf"\b{keyword}\b", text_to_search, re.IGNORECASE):
                     category_to_add = all_categories[category_name]
                     if not any(
-                        cat.id == category_to_add.id for cat in recipe.recipeCategory
+                        cat.id == category_to_add.id for cat in recipe.recipe_category
                     ):
                         print(
                             f"'{recipe.name}' contains '{keyword}', adding '{category_name}' category."
                         )
-                        recipe.recipeCategory.append(category_to_add)
+                        recipe.recipe_category.append(category_to_add)
                         updated = True
 
             if updated:

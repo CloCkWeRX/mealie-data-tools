@@ -33,6 +33,8 @@ def get_wikidata_info(food_name):
         ?item (wdt:P31/(wdt:P279*)) wd:Q42527 .    # spice or subclass
       }} UNION {{
         ?item (wdt:P31/(wdt:P279*)) wd:Q25403900 . # food ingredient or subclass
+      }} UNION {{
+        ?item (wdt:P31/(wdt:P279*)) wd:Q185217 . # dairy product
       }}
     }}
     """
