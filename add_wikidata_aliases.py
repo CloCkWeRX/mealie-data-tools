@@ -16,31 +16,42 @@ if not BASE_URL or not API_TOKEN:
     exit(1)
 # ======================================
 
-def get_wikidata_aliases(food_name):
+
+def get_wikidata_info(food_name):
     sparql = SPARQLWrapper("https://query.wikidata.org/sparql")
     sparql.setReturnFormat(JSON)
 
-    # In Wikidata, 'spice' is Q42527 and 'food ingredient' is Q25403900
-    # We'll search for items that are an instance of either of these classes
+    # Match on label OR alias, and fetch aliases + description
     query = f"""
-    SELECT ?alias WHERE {{
-      ?item rdfs:label "{food_name}"@en .
-      ?item skos:altLabel ?alias .
-      FILTER(LANG(?alias) = "en")
-      {{ ?item (wdt:P31/(wdt:P279*)) wd:Q42527 . }} # Instance of spice or subclass of spice
-      UNION
-      {{ ?item (wdt:P31/(wdt:P279*)) wd:Q25403900 . }} # Instance of food ingredient or subclass of food ingredient
+    SELECT ?item ?alias ?itemDescription WHERE {{
+      ?item (rdfs:label|skos:altLabel) "{food_name}"@en .
+      FILTER(LANG(?itemDescription) = "en")
+      OPTIONAL {{ ?item skos:altLabel ?alias FILTER(LANG(?alias) = "en") }}
+      SERVICE wikibase:label {{ bd:serviceParam wikibase:language "en". }}
+      
+      {{
+        ?item (wdt:P31/(wdt:P279*)) wd:Q42527 .    # spice or subclass
+      }} UNION {{
+        ?item (wdt:P31/(wdt:P279*)) wd:Q25403900 . # food ingredient or subclass
+      }}
     }}
     """
     sparql.setQuery(query)
 
     try:
         results = sparql.query().convert()
-        aliases = [result["alias"]["value"] for result in results["results"]["bindings"]]
-        return aliases
+        aliases = set()
+        description = None
+        for result in results["results"]["bindings"]:
+            if "alias" in result:
+                aliases.add(result["alias"]["value"])
+            if "itemDescription" in result:
+                description = result["itemDescription"]["value"]
+        return list(aliases), description
     except Exception as e:
-        print(f"  Error querying Wikidata for '{food_name}': {e}")
-        return []
+        print(f"Error querying Wikidata for '{food_name}': {e}")
+        return [], None
+
 
 async def main():
     async with MealieClient(base_url=BASE_URL, api_token=API_TOKEN) as client:
@@ -55,25 +66,45 @@ async def main():
             if food.name not in all_foods_dict:
                 continue
 
-            if len(food.aliases) == 0:
-                print(f"'{food.name}' has no aliases. Searching Wikidata...")
+            aliases, description = get_wikidata_info(food.name)
 
-                aliases = get_wikidata_aliases(food.name)
+            updated = False
 
-                if aliases:
-                    print(f"  Found aliases on Wikidata: {', '.join(aliases)}")
-                    for alias_name in aliases:
-                        if alias_name != food.name:
-                            food.aliases.append({ "name": alias_name })
-                            print(f"    Creating new alias {food.name} '{alias_name}'...")
-                            updated_food = {
-                                "name": food.name,
-                                "description": food.description,
-                                "aliases": food.aliases
-                            }
-                            await client.foods.update(food_id=food.id, food=updated_food)
-                else:
-                    print("  No aliases found on Wikidata.")
+            # Add aliases if missing
+            if aliases:
+                existing_alias_names = {a["name"] for a in food.aliases}
+                new_aliases = [
+                    {"name": alias_name}
+                    for alias_name in aliases
+                    if alias_name not in existing_alias_names
+                    and alias_name != food.name
+                ]
+                if new_aliases:
+                    print(
+                        f"  Adding aliases: {', '.join(a['name'] for a in new_aliases)}"
+                    )
+                    food.aliases.extend(new_aliases)
+                    updated = True
+            else:
+                print("  No aliases found on Wikidata.")
+
+            # Set description if missing
+            if not food.description and description:
+                print(f"  Setting description from Wikidata: {description}")
+                food.description = description
+                updated = True
+
+            if updated:
+                updated_food = {
+                    "name": food.name,
+                    "description": food.description,
+                    "aliases": food.aliases,
+                }
+                await client.foods.update(food_id=food.id, food=updated_food)
+                print(f"  Updated '{food.name}' successfully.\n")
+            else:
+                print(f"  No updates required for '{food.name}'.\n")
+
 
 if __name__ == "__main__":
     asyncio.run(main())
