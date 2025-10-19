@@ -47,14 +47,16 @@ async def find_tool_mentions(recipe) -> list[str]:
     return matches
 
 
+from utils import get_all_paginated
+
+
 async def main():
     async with MealieClient(base_url=BASE_URL, api_token=API_TOKEN) as client:
         print("Fetching recipes from Mealie…")
 
-        all_recipes = await client.recipes.get_all(per_page=1000)
-        print(f"Found {len(all_recipes)} recipes.\n")
+        recipes = get_all_paginated(client.recipes.get_all)
 
-        for recipe_summary in all_recipes:
+        async for recipe_summary in recipes:
             recipe = await client.recipes.get(recipe_summary.id)
             missing_tools = await has_missing_tools(recipe)
             tool_mentions = await find_tool_mentions(recipe)
