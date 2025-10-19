@@ -15,16 +15,14 @@ if not BASE_URL or not API_TOKEN:
 # ======================================
 
 
-from utils import get_all_paginated
-
-
 async def main():
     async with MealieClient(base_url=BASE_URL, api_token=API_TOKEN) as client:
         print("Fetching recipes from Mealie…")
 
-        recipes = get_all_paginated(client.recipes.get_all)
+        all_recipes = await client.recipes.get_all(per_page=1000)
+        print(f"Found {len(all_recipes)} recipes.\n")
 
-        async for recipe_summary in recipes:
+        for recipe_summary in all_recipes:
             recipe = await client.recipes.get(recipe_summary.id)
 
             if len(recipe.recipe_category) == 0:
