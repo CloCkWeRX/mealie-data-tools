@@ -1,6 +1,7 @@
 import os
 import asyncio
 from mealie_client import MealieClient
+from mealie_client.models.food import FoodUpdateRequest
 from dotenv import load_dotenv
 from SPARQLWrapper import SPARQLWrapper, JSON
 
@@ -54,7 +55,7 @@ async def main():
             if food.name not in all_foods_dict:
                 continue
 
-            if not food.alias:
+            if len(food.aliases) == 0:
                 print(f"'{food.name}' has no aliases. Searching Wikidata...")
 
                 aliases = get_wikidata_aliases(food.name)
@@ -62,18 +63,20 @@ async def main():
                 if aliases:
                     print(f"  Found aliases on Wikidata: {', '.join(aliases)}")
                     for alias_name in aliases:
-                        alias_food = all_foods_dict.get(alias_name)
-
-                        if not alias_food:
+                        if alias_name != food.name:
+                            food.aliases.append(alias_name)
                             print(f"    Creating new food for alias '{alias_name}'...")
-                            alias_food = await client.foods.create(name=alias_name)
-                            all_foods_dict[alias_name] = alias_food
-
-                        print(f"    Merging '{alias_name}' into '{food.name}'...")
-                        await client.foods.merge(food.id, alias_food.id)
-
-                        if alias_name in all_foods_dict:
-                            del all_foods_dict[alias_name]
+                            updated_food = FoodUpdateRequest(
+                                name=food.name,
+                                pluralName=food.pluralName,
+                                description=food.description,
+                                extra=food.extras,
+                                labelId=food.labelId,
+                                aliases=food.aliases,
+                                householdsWithIngredientFood=food.householdsWithIngredientFood,
+                                label=food.label
+                            )
+                            await client.foods.update(food_id=food.id, food=updated_food)
                 else:
                     print("  No aliases found on Wikidata.")
 
