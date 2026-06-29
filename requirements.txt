@@ -1,3 +1,0 @@
-mealie-client
-python-dotenv
-SPARQLWrapper
