@@ -5,12 +5,20 @@ from mealie_client.models.common import RecipeTag
 from common import BASE_URL, API_TOKEN
 
 MEAT_FISH_KEYWORDS: list[str] = [
-    "anchovy", "bacon", "bass", "beef", "brisket", "chicken", "clam",
-    "cod", "crab", "duck", "fish", "goat", "goose", "ham", "lamb",
-    "lobster", "mackerel", "mussel", "mutton", "octopus", "oxtail",
-    "oyster", "pork", "prawn", "rabbit", "salmon", "sardine",
-    "sausage", "scallop", "shrimp", "snapper", "steak", "tilapia",
-    "trout", "tuna", "turkey", "veal", "venison",
+    "anchovy", "bacon", "bass", "beef", "brisket",
+    "catfish", "chicken", "chorizo", "clam", "cod", "crab",
+    "duck", "eel", "fish", "goat", "goose", "grouse",
+    "haddock", "hake", "halibut", "ham", "herring",
+    "kangaroo",
+    "lamb", "liver", "lobster", "mackerel", "mussel", "mutton",
+    "octopus", "oxtail", "oyster",
+    "pancetta", "pastrami", "pâté", "pepperoni", "pheasant",
+    "pork", "prawn", "prosciutto", "quail",
+    "rabbit", "salami", "salmon", "sardine", "sausage",
+    "scallop", "shrimp", "snapper", "steak",
+    "tilapia", "trout", "tuna", "turkey",
+    "veal", "venison",
+    "whiting",
 ]
 _MEAT_FISH_RE = re.compile(
     r"\b(?:" + "|".join(re.escape(kw) for kw in MEAT_FISH_KEYWORDS) + r")\b",
@@ -18,13 +26,14 @@ _MEAT_FISH_RE = re.compile(
 )
 
 
+_NON_MEAT_FOODS: set[str] = {
+    "oyster sauce",
+}
+
+
 def has_meat_or_fish(recipe) -> bool:
     name = getattr(recipe, "name", "") or ""
     if _MEAT_FISH_RE.search(name):
-        return True
-
-    description = getattr(recipe, "description", "") or ""
-    if description and _MEAT_FISH_RE.search(description):
         return True
 
     ingredients = getattr(recipe, "recipeIngredient", [])
@@ -32,8 +41,9 @@ def has_meat_or_fish(recipe) -> bool:
         food = ing.get("food")
         if isinstance(food, dict):
             food_name = (food.get("name") or "")
-            if food_name and _MEAT_FISH_RE.search(food_name):
-                return True
+            if food_name and food_name.lower() not in _NON_MEAT_FOODS:
+                if _MEAT_FISH_RE.search(food_name):
+                    return True
 
         text = (ing.get("text") or "")
         if text and _MEAT_FISH_RE.search(text):
@@ -98,32 +108,49 @@ async def main():
             page += 1
         print(f"Found {len(all_recipes)} recipes.\n")
 
-        updated_count = 0
+        tagged_count = 0
+        untagged_count = 0
         for recipe_summary in all_recipes:
-            recipe = await client.recipes.get(recipe_summary.id)
+            try:
+                recipe = await client.recipes.get(recipe_summary.id)
+            except Exception:
+                continue
 
             recipe.tags = [
                 RecipeTag.from_dict(t) if isinstance(t, dict) else t
                 for t in recipe.tags
             ]
-            already_tagged = any(
+            has_veg_tag = any(
                 t.name.lower() == "vegetarian" for t in recipe.tags
             )
-            if already_tagged:
-                continue
+            contains_meat = has_meat_or_fish(recipe)
 
-            if has_meat_or_fish(recipe):
-                continue
+            if not has_veg_tag and not contains_meat:
+                print(f"'{recipe.name}' appears vegetarian. Tagging…")
+                recipe.tags.append(veg_tag)
+                await client.patch(
+                    f"recipes/{recipe.id}",
+                    json_data={"tags": [t.to_dict() for t in recipe.tags]},
+                )
+                tagged_count += 1
 
-            print(f"'{recipe.name}' appears vegetarian. Tagging…")
-            recipe.tags.append(veg_tag)
-            await client.patch(
-                f"recipes/{recipe.id}",
-                json_data={"tags": [t.to_dict() for t in recipe.tags]},
-            )
-            updated_count += 1
+            elif has_veg_tag and contains_meat:
+                print(f"'{recipe.name}' contains meat/fish. Removing Vegetarian tag…")
+                recipe.tags = [
+                    t for t in recipe.tags if t.name.lower() != "vegetarian"
+                ]
+                await client.patch(
+                    f"recipes/{recipe.id}",
+                    json_data={"tags": [t.to_dict() for t in recipe.tags]},
+                )
+                untagged_count += 1
 
-        print(f"\nDone. Tagged {updated_count} recipes as Vegetarian.")
+        parts = []
+        if tagged_count:
+            parts.append(f"Tagged {tagged_count}")
+        if untagged_count:
+            parts.append(f"Untagged {untagged_count}")
+        print(f"\nDone. {'; '.join(parts)}." if parts else "\nDone. No changes.")
 
 
 if __name__ == "__main__":
