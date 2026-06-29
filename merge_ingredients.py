@@ -1,19 +1,7 @@
-import os
 import asyncio
 import argparse
 from mealie_client import MealieClient
-from dotenv import load_dotenv
-
-load_dotenv()
-
-# ============ CONFIGURATION ============
-BASE_URL = os.getenv("MEALIE_URL")
-API_TOKEN = os.getenv("API_TOKEN")
-
-if not BASE_URL or not API_TOKEN:
-    print("❌ Missing environment variables: MEALIE_URL and/or API_TOKEN")
-    exit(1)
-# ======================================
+from common import BASE_URL, API_TOKEN
 
 
 async def main(main_food_name: str, alias_food_name: str):
