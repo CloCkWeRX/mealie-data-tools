@@ -1,6 +1,7 @@
 import asyncio
 import re
 from mealie_client import MealieClient
+from mealie_client.models.common import RecipeCategory, RecipeTag
 from common import BASE_URL, API_TOKEN
 
 CATEGORY_MAP = {
@@ -12,11 +13,21 @@ CATEGORY_MAP = {
 
 async def main():
     async with MealieClient(base_url=BASE_URL, api_token=API_TOKEN) as client:
-        print("Fetching categories and recipes from Mealie…")
+        print("Fetching categories from Mealie…")
 
-        all_categories = {cat.name: cat for cat in await client.categories.get_all()}
+        categories_response = await client.get("organizers/categories")
+        if isinstance(categories_response, dict) and "items" in categories_response:
+            categories_data = categories_response["items"]
+        elif isinstance(categories_response, list):
+            categories_data = categories_response
+        else:
+            categories_data = []
 
-        # Check if target categories exist
+        all_categories: dict[str, RecipeCategory] = {}
+        for c in categories_data:
+            cat = RecipeCategory.from_dict(c) if isinstance(c, dict) else c
+            all_categories[cat.name] = cat
+
         for cat_name in CATEGORY_MAP.values():
             if cat_name not in all_categories:
                 print(
@@ -24,6 +35,7 @@ async def main():
                 )
                 return
 
+        print("Fetching recipes from Mealie…")
         all_recipes = []
         page = 1
         while True:
@@ -36,10 +48,23 @@ async def main():
             page += 1
         print(f"Found {len(all_recipes)} recipes.\n")
 
+        updated_count = 0
         for recipe_summary in all_recipes:
             recipe = await client.recipes.get(recipe_summary.id)
 
-            text_to_search = f"{recipe.name} {recipe.description} {' '.join(tag.name for tag in recipe.tags)}".lower()
+            recipe.tags = [
+                RecipeTag.from_dict(t) if isinstance(t, dict) else t
+                for t in recipe.tags
+            ]
+            recipe.recipe_category = [
+                RecipeCategory.from_dict(c) if isinstance(c, dict) else c
+                for c in recipe.recipe_category
+            ]
+
+            text_to_search = (
+                f"{recipe.name} {recipe.description or ''} "
+                f"{' '.join(t.name for t in recipe.tags)}"
+            ).lower()
 
             updated = False
             for keyword, category_name in CATEGORY_MAP.items():
@@ -55,7 +80,17 @@ async def main():
                         updated = True
 
             if updated:
-                await client.recipes.update(recipe.id, recipe)
+                await client.patch(
+                    f"recipes/{recipe.id}",
+                    json_data={
+                        "recipeCategory": [
+                            c.to_dict() for c in recipe.recipe_category
+                        ]
+                    },
+                )
+                updated_count += 1
+
+        print(f"\nDone. Updated {updated_count} recipes.")
 
 
 if __name__ == "__main__":
