@@ -24,7 +24,16 @@ async def main():
                 )
                 return
 
-        all_recipes = await client.recipes.get_all(per_page=1000)
+        all_recipes = []
+        page = 1
+        while True:
+            batch = await client.recipes.get_all(per_page=100, page=page)
+            if not batch:
+                break
+            all_recipes.extend(batch)
+            if len(batch) < 100:
+                break
+            page += 1
         print(f"Found {len(all_recipes)} recipes.\n")
 
         for recipe_summary in all_recipes:

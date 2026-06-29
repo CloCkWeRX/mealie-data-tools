@@ -92,7 +92,16 @@ async def main():
         print(f"Found {len(available_tools)} tools in Mealie.\n")
 
         print("Fetching recipes from Mealie…")
-        all_recipes = await client.recipes.get_all(per_page=1000)
+        all_recipes: list = []
+        page = 1
+        while True:
+            batch = await client.recipes.get_all(per_page=100, page=page)
+            if not batch:
+                break
+            all_recipes.extend(batch)
+            if len(batch) < 100:
+                break
+            page += 1
         print(f"Found {len(all_recipes)} recipes.\n")
 
         updated_count = 0
